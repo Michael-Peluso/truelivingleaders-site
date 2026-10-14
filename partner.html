@@ -198,8 +198,8 @@
           </form>
           <div class="tl-form__success">
             <div class="tl-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
-            <p class="tl-h3">Thanks. Your inquiry is in.</p>
-            <p class="tl-body" style="margin-top:12px">Our team reads every one, and we'll reply within two business days.</p>
+            <p class="tl-h3">Almost there. Press send in the email that just opened.</p>
+            <p class="tl-body" style="margin-top:12px">Your inquiry is filled in and addressed to our team. If no email opened, write to <a href="mailto:info@trueliving.team">info@trueliving.team</a> and we'll reply within two business days.</p>
           </div>
         </div>
       </div>
@@ -357,6 +357,17 @@
       e.preventDefault();
       if (!checkScope(f)) return;
       var card = f.closest('.tl-form');
+      /* Send the request by email until the GHL forms replace this. */
+      var fd = new FormData(f), lines = [];
+      fd.forEach(function (v, k) {
+        if (v === '' || /^(utm_|page_url$|consent$)/.test(k)) return;
+        var lbl = k.replace(/_/g, ' ');
+        lines.push(lbl.charAt(0).toUpperCase() + lbl.slice(1) + ': ' + v);
+      });
+      var who = fd.get('full_name') || '';
+      var subj = (/speaking/.test(location.pathname) ? 'Speaking request' : 'Partnership inquiry') + (who ? ' from ' + who : '');
+      var body = lines.join('\n') + '\n\nSent from ' + location.href;
+      window.location.href = 'mailto:info@trueliving.team?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(body);
       card.classList.add('tl-is-sent');
       var ok = card.querySelector('.tl-form__success');
       if (ok) { ok.setAttribute('tabindex', '-1'); ok.focus(); }
