@@ -198,8 +198,8 @@
           </form>
           <div class="tl-form__success">
             <div class="tl-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
-            <p class="tl-h3">Almost there. Press send in the email that just opened.</p>
-            <p class="tl-body" style="margin-top:12px">Your inquiry is filled in and addressed to our team. If no email opened, write to <a href="mailto:info@trueliving.team">info@trueliving.team</a> and we'll reply within two business days.</p>
+            <p class="tl-h3">Thanks. Your inquiry is in.</p>
+            <p class="tl-body" style="margin-top:12px">We'll reply within two business days. Questions in the meantime? Write to <a href="mailto:info@trueliving.team">info@trueliving.team</a>.</p>
           </div>
         </div>
       </div>
@@ -357,20 +357,37 @@
       e.preventDefault();
       if (!checkScope(f)) return;
       var card = f.closest('.tl-form');
-      /* Send the request by email until the GHL forms replace this. */
-      var fd = new FormData(f), lines = [];
-      fd.forEach(function (v, k) {
+      /* Send the request to the True Living CRM (GHL inbound webhook). Email is the fallback. */
+      var isSpk = /speaking/.test(location.pathname);
+      var fd = new FormData(f), data = {}, lines = [];
+      fd.forEach(function (v, k) { data[k] = (k in data && data[k] !== '') ? data[k] + ', ' + v : v; });
+      Object.keys(data).forEach(function (k) {
+        var v = data[k];
         if (v === '' || /^(utm_|page_url$|consent$)/.test(k)) return;
         var lbl = k.replace(/_/g, ' ');
         lines.push(lbl.charAt(0).toUpperCase() + lbl.slice(1) + ': ' + v);
       });
-      var who = fd.get('full_name') || '';
-      var subj = (/speaking/.test(location.pathname) ? 'Speaking request' : 'Partnership inquiry') + (who ? ' from ' + who : '');
-      var body = lines.join('\n') + '\n\nSent from ' + location.href;
-      window.location.href = 'mailto:info@trueliving.team?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(body);
-      card.classList.add('tl-is-sent');
+      var nm = String(data.full_name || '').trim().split(/\s+/);
+      data.first_name = nm.shift() || '';
+      data.last_name = nm.join(' ');
+      data.form_name = isSpk ? 'Speaking request' : 'Partnership inquiry';
+      data.details = data.form_name + '\n' + lines.join('\n') + '\nPage: ' + location.href;
+      var btn = f.querySelector('[type=submit]'); if (btn) btn.disabled = true;
       var ok = card.querySelector('.tl-form__success');
-      if (ok) { ok.setAttribute('tabindex', '-1'); ok.focus(); }
+      var done = function () {
+        card.classList.add('tl-is-sent');
+        if (ok) { ok.setAttribute('tabindex', '-1'); ok.focus(); }
+      };
+      var mail = function () {
+        var h = ok && ok.querySelector('.tl-h3');
+        if (h) h.textContent = 'Almost there. Press send in the email that just opened.';
+        window.location.href = 'mailto:info@trueliving.team?subject=' + encodeURIComponent(data.form_name + (data.full_name ? ' from ' + data.full_name : '')) + '&body=' + encodeURIComponent(data.details);
+        done();
+      };
+      fetch('https://services.leadconnectorhq.com/hooks/aAYOakzLQH0DEQ9Md7k1/webhook-trigger/407fdbfe-1fc4-4af6-a531-9350169cbf1e', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+      }).then(function (r) { return r.text().then(function (t) { if (r.ok && /success/i.test(t)) done(); else mail(); }); })
+        .catch(mail);
     });
   });
 
