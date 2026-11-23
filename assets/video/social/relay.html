@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<title>Video relay</title>
+</head>
+<body>
+<script>
+/* Temporary helper: hands the public 9:16 case-study cuts in this folder to Meta Business Suite
+   (which embeds this page) so the posts can be scheduled there. Only answers business.facebook.com. */
+(function () {
+  var META = 'https://business.facebook.com';
+  window.addEventListener('message', function (e) {
+    if (e.origin !== META || !e.data || !e.data.tlWant) return;
+    var name = String(e.data.tlWant);
+    if (!/^gc-[a-z-]+-9x16\.mp4$/.test(name)) return;
+    fetch(name, { cache: 'no-store' })
+      .then(function (r) { return r.blob().then(function (b) { return { ok: r.ok, b: b }; }); })
+      .then(function (x) { e.source.postMessage({ tl: 1, name: name, ok: x.ok, blob: x.b }, META); })
+      .catch(function (err) { e.source.postMessage({ tl: 1, name: name, error: String(err) }, META); });
+  });
+  if (window.parent !== window) window.parent.postMessage({ tl: 1, ready: true }, META);
+})();
+</script>
+</body>
+</html>
